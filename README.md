@@ -115,21 +115,24 @@ Most endpoints operate statelessly, processing input and returning a result. The
 
 ```
 .
-├── Agents/
-│   ├── __init__.py
-│   ├── DIAGNOSIS.py         # Diagnosis logic (symptoms, questions, analysis)
-│   ├── ReportingAgent.py      # Report generation (MD, PDF)
-│   ├── SEARCHENGINEAgent.py   # Google Search and web scraping
-│   ├── UserIntakeAgent.py     # Initial image processing
-│   ├── ReportAnalysisAgent.py # Document/Image analysis logic
-│   └── chatbot.py             # Conversational response logic
-├── CONFIGURATION.py         # Model/API configuration, loads .env
-├── Initialization.py        # Vertex AI setup, core utilities (LLM comms, STT)
-├── app.py                   # FastAPI application, endpoints, routing
-├── requirements.txt         # Python package dependencies
-├── .env.example             # Example environment variable file
-├── README.md                # This file
-└── .gitignore               # Git ignore file (should include .env, __pycache__, etc.)
+DermaAI_backend/
+│
+├── .env                           # Environment variables and configuration
+├── __init__.py                   # Makes the directory a Python package
+├── app.py                        # Main FastAPI application
+├── CONFIGURATION.py              # Global configuration settings
+├── Initialization.py             # Model and service initialization
+├── requirements.txt              # Project dependencies
+├── README.md                     # Project documentation
+│
+└── Agents/                       # Agent modules directory
+    ├── __init__.py              # Makes Agents a package
+    ├── UserIntakeAgent.py       # Handles initial user input processing
+    ├── SearchEngineAgent.py     # Web search and information retrieval
+    ├── Diagnosis.py             # Diagnostic logic and assessment
+    ├── ReportingGenerationAgent.py  # Report generation functionality
+    ├── ReportingAnalysisAgent.py    # Report analysis and insights
+    └── chatbot.py               # Conversational interface logic
 ```
 
 ## Requirements
