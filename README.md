@@ -1,11 +1,28 @@
-Okay, here is a detailed and comprehensive `README.md` file for the DermaAI API project.
+<div align="center">
+  <h1>  DermaAI API: Simulated Dermatology Assistant</h1>
+  <a class="header-badge" target="_blank" href="https://www.linkedin.com/in/khatoonintech/">
+  <img src="https://img.shields.io/badge/style--5eba00.svg?label=LinkedIn&logo=linkedin&style=social">
+  </a>
+  
 
-```markdown
-# DermaAI API: Simulated Dermatology Assistant
-
+<sub>Author:
+<a href="https://www.linkedin.com/in/Khatoonintech/" target="_blank">Ayesha Noreen</a><br>
+<small> Agentic AI & Automation Enginer @DevRolin </small>
+</sub>
+<br>
+<br>
+<br>
+	  
 [![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Framework](https://img.shields.io/badge/framework-FastAPI-green.svg)](https://fastapi.tiangolo.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) <!-- Adjust license if needed -->
+
+</div>
+
+---
+
+
+
 
 ## Overview
 
@@ -283,5 +300,17 @@ The DermaAI API provides a robust demonstration of integrating Large Language Mo
 ## License
 
 <!-- Choose a license -->
-This project is licensed under the MIT License - see the LICENSE file for details (if created).
-```
+This project is licensed under the MIT License - see the LICENSE file for details .
+
+---
+
+<div align="center">
+<h3>For any query/help ,please contact our developer:</h3>  
+Developer : <a href="https://www.linkedin.com/in/Khatoonintech/" target="_blank">Ayesha Noreen</a><br>
+	<small> Agentic AI & Automation Engr @DevRolin </small>
+<br> <a href="https://www.github.com/Khatoonintech/" target="_blank"> Don't forget to ⭐ our repo </a><br>
+
+
+</div>
+
+
