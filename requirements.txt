@@ -1,0 +1,41 @@
+# requirements.txt
+
+# --- Core Framework ---
+fastapi
+uvicorn[standard] # Includes pydantic, starlette, etc.
+
+# --- Configuration ---
+python-dotenv
+
+# --- Google Cloud & Vertex AI ---
+google-cloud-aiplatform>=1.49.0
+google-api-python-client # Often needed as a dependency or for auth flows
+
+# --- Web Interaction & Scraping ---
+requests
+beautifulsoup4
+
+# --- Audio Processing ---
+pydub
+SpeechRecognition
+# google-cloud-speech # Include if using Google Cloud Speech-to-Text API directly or as backend for SpeechRecognition
+
+# --- Reporting & Document Generation ---
+markdown
+weasyprint # Requires system dependencies (pango, cairo, etc.) - see WeasyPrint docs!
+
+# --- Report Analysis (Text Extraction) ---
+# For PDF
+PyPDF2
+# For DOCX
+python-docx
+# For Image OCR
+pytesseract # Requires separate Tesseract OCR engine installation on the system
+Pillow # Image handling library, often needed by pytesseract
+ python-multipart
+
+
+#Important Note on weasyprint: This library requires system-level libraries like Pango, Cairo, and GDK-PixBuf. When deploying to Render (or any Linux environment), you'll need to ensure these are installed. Render's Docker environment might require adding commands to your Dockerfile (if using Docker) or using a build script to apt-get install libcairo2-dev libpango1.0-dev libpangocairo-1.0-0 libgdk-pixbuf2.0-dev libffi-dev shared-mime-info. Check Render's documentation for installing system packages.
+#FFmpeg for pydub: Pydub might require ffmpeg or libav to be installed on the system to handle certain audio format conversions (like OGG or MP3 depending on the OS). Add ffmpeg to your system dependencies if needed.
+
+
