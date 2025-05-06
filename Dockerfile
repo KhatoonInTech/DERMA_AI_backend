@@ -25,11 +25,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the project files
 COPY . .
 
-# Default port for Render
-ENV PORT=10000
-
-# Expose port
-EXPOSE 10000
 
 # Start command
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "${PORT:-8080}"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
