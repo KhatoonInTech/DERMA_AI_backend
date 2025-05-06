@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: derma-ai-backend
+    plan: free
+    dockerfilePath: Dockerfile
+    autoDeploy: true
