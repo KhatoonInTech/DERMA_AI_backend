@@ -29,7 +29,7 @@ from Agents.ReportingGenerationAgent import generate_report_markdown, generate_p
 from Agents.ReportingAnalysisAgent import analyze_report_file
 # --- Import the new Chatbot Agent function ---
 from Agents.chatbot import generate_chat_response
-
+from Agents.SearchEngineAgent import search_google, get_urls_from_search, summarize_article
 
 # --- FastAPI App Initialization ---
 # ... (app initialization remains the same) ...
@@ -44,7 +44,6 @@ app = FastAPI(
 conversation_histories: Dict[str, ChatSession] = {}
 
 # --- Pydantic Models ---
-# ... (Pydantic models remain the same) ...
 class QuestionRequest(BaseModel):
     statement: str = Field(..., description="Initial user statement about their concern.", example="I have an itchy red rash on my arm.")
     symptoms: Optional[List[str]] = Field(None, description="Optional pre-extracted list of symptoms.", example=["RASH", "ITCHING", "REDNESS"])
@@ -86,6 +85,18 @@ class PdfRequest(BaseModel):
     visual_description: Optional[str] = Field(None, description="Optional visual description if an image was processed.")
     report_markdown: Optional[str] = Field(None, description="Optional pre-generated markdown report.")
 
+class ArticleSummary(BaseModel):
+    title: str
+    snippet: str
+    url: str
+    image: Optional[str] = None
+    summary: str
+
+class SearchResponse(BaseModel):
+    message: str
+    processing_time_seconds: float
+    articles: List[ArticleSummary]
+    query: str
 
 # --- Helper Function for Input Processing ---
 # ... (process_input remains the same) ...
@@ -159,24 +170,23 @@ async def process_input(text_input: Optional[str], file_input: Optional[UploadFi
 
 @app.get("/", tags=["General"])
 async def read_root():
-    # ... (endpoint remains the same) ...
         """ Root endpoint providing basic API information. """
         return {
             "message": "Welcome to the DermaAI API.",
             "version": app.version,
             "endpoints": {
-                "/docs": "This API documentation.",
-                "/generate_questions": "POST: Generate follow-up questions based on initial statement/symptoms.",
-                "/assess": "POST: Perform a full assessment based on initial text or image/audio.",
-                "/analyze_report": "POST: Analyze text from an uploaded PDF/DOCX/Image report.",
-                "/continue_conversation": "POST: Continue an existing conversation using a session ID.",
-                "/generate_report_pdf": "POST: Generate a PDF report from assessment results."
+            "/docs": "This API documentation.",
+            "/generate_questions": "POST: Generate follow-up questions based on initial statement/symptoms.",
+            "/assess": "POST: Perform a full assessment based on initial text or image/audio.",
+            "/analyze_report": "POST: Analyze text from an uploaded PDF/DOCX/Image report.",
+            "/continue_conversation": "POST: Continue an existing conversation using a session ID.",
+            "/generate_report_pdf": "POST: Generate a PDF report from assessment results.",
+            "/search_articles": "POST: Search for articles related to a query and return summaries."
             }
         }
 
 @app.post("/generate_questions", response_model=QuestionResponse, tags=["Assessment Steps"])
 async def get_diagnostic_questions_endpoint(request: QuestionRequest = Body(...)):
-    # ... (endpoint remains the same) ...
     """
     Generates potential diagnostic questions based on an initial statement and optional symptoms.
     """
@@ -214,7 +224,6 @@ async def create_assessment_endpoint(
     text_input: Optional[str] = Form(None),
     file_input: Optional[UploadFile] = File(None)
 ):
-    # ... (endpoint remains the same) ...
     """
     Performs a full simulated assessment based on initial text, image, or audio input.
     """
@@ -276,7 +285,6 @@ async def create_assessment_endpoint(
 
 @app.post("/analyze_report", response_model=ReportAnalysisResponse, tags=["Utilities"])
 async def analyze_report_endpoint(report_file: UploadFile = File(...)):
-    # ... (endpoint remains the same) ...
     """
     Analyzes an uploaded report file (PDF, DOCX, Image) using OCR/text extraction
     and asks the LLM to summarize it in simple terms.
@@ -317,6 +325,46 @@ async def analyze_report_endpoint(report_file: UploadFile = File(...)):
             file_processed=filename,
             mime_type=mime_type
         )
+
+@app.post("/generate_report_pdf", tags=["Reporting"])
+async def create_report_pdf_endpoint(request: PdfRequest = Body(...)):
+    # ... (endpoint remains the same) ...
+    """
+    Generates a downloadable PDF report from assessment results.
+    """
+    print("\n--- PDF Generation Request ---")
+    start_time = time.time()
+    report_markdown = request.report_markdown
+
+    try:
+        if not report_markdown:
+            print("Generating markdown for PDF...")
+            report_markdown = generate_report_markdown(request.final_assessment, request.visual_description)
+            if report_markdown.startswith("Error:"):
+                raise HTTPException(status_code=500, detail=f"Failed to generate report content: {report_markdown}")
+
+        print("Generating PDF from markdown...")
+        pdf_bytes = generate_pdf_from_md(report_markdown)
+        processing_time = round(time.time() - start_time, 2)
+
+        if pdf_bytes:
+            print(f"✅ PDF generated successfully in {processing_time}s.")
+            filename = f"Simulated_Dermatology_Report_{time.strftime('%Y%m%d_%H%M%S')}.pdf"
+            return StreamingResponse(
+                io.BytesIO(pdf_bytes),
+                media_type="application/pdf",
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )
+        else:
+            print(f"❌ PDF generation failed in {processing_time}s (likely WeasyPrint issue).")
+            raise HTTPException(status_code=500, detail="Failed to generate PDF report. Check server logs and WeasyPrint dependencies.")
+
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        print(f"🚨 Unexpected Error during PDF generation: {e}")
+        import traceback; traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal server error during PDF generation: {e}")
 
 
 @app.post("/continue_conversation", response_model=ConversationResponse, tags=["Conversation"])
@@ -368,46 +416,67 @@ async def continue_conversation_endpoint(request: ConversationRequest = Body(...
             processing_time_seconds=processing_time
         )
 
-@app.post("/generate_report_pdf", tags=["Reporting"])
-async def create_report_pdf_endpoint(request: PdfRequest = Body(...)):
-    # ... (endpoint remains the same) ...
+
+@app.post("/search_articles", response_model=SearchResponse, tags=["Research"])
+async def search_articles_endpoint(query: str = Body(..., embed=True)):
     """
-    Generates a downloadable PDF report from assessment results.
+    Searches for articles related to the query, processes them, and returns summaries.
     """
-    print("\n--- PDF Generation Request ---")
+    print(f"\n--- Article Search Request for: {query} ---")
     start_time = time.time()
-    report_markdown = request.report_markdown
+    temp_chat_session = model.start_chat(history=[]) # Temporary session for this step
 
     try:
-        if not report_markdown:
-            print("Generating markdown for PDF...")
-            report_markdown = generate_report_markdown(request.final_assessment, request.visual_description)
-            if report_markdown.startswith("Error:"):
-                raise HTTPException(status_code=500, detail=f"Failed to generate report content: {report_markdown}")
+        # Search for articles
+        print("Performing Google search...")
+        search_results = search_google(query, search_type="web")
+        if not search_results:
+            raise HTTPException(status_code=500, detail="Failed to retrieve search results")
 
-        print("Generating PDF from markdown...")
-        pdf_bytes = generate_pdf_from_md(report_markdown)
+        # Get metadata for all results
+        items_count = len(search_results.get('items', []))
+        print(f"Processing {items_count} search results...")
+        search_metadata = get_urls_from_search(search_results, max_urls=items_count)
+
+        # Process each article
+        articles = []
+        for article_metadata in search_metadata:
+            try:
+                Title = article_metadata.get('title', 'No Title')
+                print(f"Processing article: {Title[:50]}...")
+                
+                summary = summarize_article(temp_chat_session,article_metadata, query)
+                
+                articles.append(ArticleSummary(
+                    title=Title,
+                    snippet=article_metadata.get('snippet', Title),
+                    url=article_metadata.get('url', 'No URL'),
+                    image=article_metadata.get('image_context'),
+                    summary=summary
+                ))
+            except Exception as article_error:
+                print(f"⚠️ Error processing article {Title}: {article_error}")
+                continue
+
         processing_time = round(time.time() - start_time, 2)
+        
+        if not articles:
+            raise HTTPException(status_code=404, detail="No articles could be processed successfully")
 
-        if pdf_bytes:
-            print(f"✅ PDF generated successfully in {processing_time}s.")
-            filename = f"Simulated_Dermatology_Report_{time.strftime('%Y%m%d_%H%M%S')}.pdf"
-            return StreamingResponse(
-                io.BytesIO(pdf_bytes),
-                media_type="application/pdf",
-                headers={"Content-Disposition": f"attachment; filename={filename}"}
-            )
-        else:
-            print(f"❌ PDF generation failed in {processing_time}s (likely WeasyPrint issue).")
-            raise HTTPException(status_code=500, detail="Failed to generate PDF report. Check server logs and WeasyPrint dependencies.")
+        print(f"✅ Successfully processed {len(articles)} articles in {processing_time}s")
+        return SearchResponse(
+            message="Articles retrieved and processed successfully",
+            processing_time_seconds=processing_time,
+            articles=articles,
+            query=query
+        )
 
     except HTTPException as http_exc:
         raise http_exc
     except Exception as e:
-        print(f"🚨 Unexpected Error during PDF generation: {e}")
+        print(f"🚨 Error during article search and processing: {e}")
         import traceback; traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Internal server error during PDF generation: {e}")
-
+        raise HTTPException(status_code=500, detail=f"Error processing search request: {str(e)}")
 
 # --- Run Instruction (for local development) ---
 if __name__ == "__main__":
