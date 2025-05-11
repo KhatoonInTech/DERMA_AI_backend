@@ -35,4 +35,4 @@ ENV CREDENTIALS_PATH="/app/gcloud_creds.json"
 EXPOSE 10000
 
 # Start command (write JSON string from env var to file, then run app)
-CMD sh -c "echo \"$GOOGLE_APPLICATION_CREDENTIALS\" > $CREDENTIALS_PATH && export GOOGLE_APPLICATION_CREDENTIALS=$CREDENTIALS_PATH && uvicorn app:app --host 0.0.0.0 --port $PORT"
+CMD sh -c "printf '%s' \"$GOOGLE_APPLICATION_CREDENTIALS\" > $CREDENTIALS_PATH && export GOOGLE_APPLICATION_CREDENTIALS=$CREDENTIALS_PATH && uvicorn app:app --host 0.0.0.0 --port $PORT"
