@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from vertexai.generative_models import HarmCategory, HarmBlockThreshold
 
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv(override=True)  # Force reload of environment variables
 
 # --- Model Configuration ---
 MODEL_NAME = "gemini-2.0-flash-001"  # Updated to a generally available model
