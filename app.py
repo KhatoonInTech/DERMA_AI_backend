@@ -46,7 +46,7 @@ conversation_histories: Dict[str, ChatSession] = {}
 # --- Pydantic Models ---
 class QuestionRequest(BaseModel):
     statement: str = Field(..., description="Initial user statement about their concern.", example="I have an itchy red rash on my arm.")
-    symptoms: Optional[List[str]] = Field(None, description="Optional pre-extracted list of symptoms.", example=["RASH", "ITCHING", "REDNESS"])
+    #symptoms: Optional[List[str]] = Field(None, description="Optional pre-extracted list of symptoms.", example=["RASH", "ITCHING", "REDNESS"])
 
 class QuestionResponse(BaseModel):
     message: str
@@ -194,11 +194,11 @@ async def get_diagnostic_questions_endpoint(request: QuestionRequest = Body(...)
     start_time = time.time()
     temp_chat_session = model.start_chat(history=[]) # Temporary session for this step
 
-    symptoms_to_use = request.symptoms
-    if not symptoms_to_use:
-        print("Extracting symptoms from statement...")
-        symptoms_to_use = extract_symptoms(temp_chat_session, request.statement)
-        if not symptoms_to_use: symptoms_to_use = [] # Ensure list
+    #symptoms_to_use = request.symptoms
+   # if not symptoms_to_use:
+    print("Extracting symptoms from statement...")
+    symptoms_to_use = extract_symptoms(temp_chat_session, request.statement)
+    if not symptoms_to_use: symptoms_to_use = [] # Ensure list
 
     print(f"Generating questions for statement: \"{request.statement[:100]}...\" with symptoms: {symptoms_to_use}")
     questions = generate_diagnosis_questions(temp_chat_session, symptoms_to_use, request.statement)
