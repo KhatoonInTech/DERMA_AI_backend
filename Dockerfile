@@ -15,16 +15,24 @@ RUN apt-get update && \
         git \
     && rm -rf /var/lib/apt/lists/*
 
-# Set workdir
+# Set working directory
 WORKDIR /app
 
 # Copy and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the project files
+# Copy project files
 COPY . .
 
+# Set PORT environment variable for Railway
+ENV PORT=10000
 
-# Start command
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
+# Set path where credentials will be written
+ENV CREDENTIALS_PATH="/app/gcloud_creds.json"
+
+# Expose the port
+EXPOSE 10000
+
+# Start command (write JSON string from env var to file, then run app)
+CMD sh -c "echo \"$GOOGLE_APPLICATION_CREDENTIALS\" > $CREDENTIALS_PATH && export GOOGLE_APPLICATION_CREDENTIALS=$CREDENTIALS_PATH && uvicorn app:app --host 0.0.0.0 --port $PORT"
