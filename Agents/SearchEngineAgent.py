@@ -5,6 +5,7 @@ import time
 import re
 from bs4 import BeautifulSoup
 from CONFIGURATION import GOOGLE_API_KEY, SEARCH_ENGINE_ID, IMAGE_ENGINE_ID # Import necessary config
+from Initialization import model, send_message_to_llm, ChatSession
 
 def search_google(query: str, search_type: str = "web", max_results: int = 5) -> dict | None:
     """
@@ -59,18 +60,31 @@ def search_google(query: str, search_type: str = "web", max_results: int = 5) ->
         print(f"❌ An unexpected error occurred during Google Search for '{query}': {e}")
         return None
 
-def get_urls_from_search(search_results: dict | None, max_urls: int = 5) -> list[str]:
-    """Extracts URLs from search results."""
-    links = []
+def get_urls_from_search(search_results: dict | None, max_urls: int = 5) -> list[dict]:
+    """
+    Extracts URLs and metadata from search results.
+
+    Args:
+        search_results: The JSON response from the Google Search API.
+        max_urls: Maximum number of URLs to extract.
+
+    Returns:
+        A list of dictionaries containing URL and metadata.
+    """
+    links_with_metadata = []
     if search_results and 'items' in search_results:
-        for item in search_results['items'][:max_urls]: # Already limited by max_results in search_google, but belt-and-suspenders
-            link = item.get('link') # Use .get for safety
+        for item in search_results['items'][:max_urls]:  # Limit to max_urls
+            link_data = {}
+            link = item.get('link')  # Use .get for safety
             if link:
-                links.append(link)
-            # For image search, sometimes the image URL is in 'image': {'contextLink': ...} or directly in 'link'
-            elif 'image' in item and item['image'].get('contextLink'):
-                 links.append(item['image']['contextLink']) # Prefer context link if available
-    return links
+                link_data['url'] = link
+                link_data['title'] = item.get('title', '')  # Extract title if available
+                link_data['snippet'] = item.get('snippet', '')  # Extract snippet if available
+                # For image search, sometimes the image URL is in 'image': {'contextLink': ...}
+                if 'image' in item and item['image'].get('contextLink'):
+                    link_data['image_context'] = item['image']['contextLink']
+                links_with_metadata.append(link_data)
+    return links_with_metadata
 
 def scrape_urls(urls: list[str]) -> list[str]:
     """Scrapes text content from a list of URLs."""
@@ -141,4 +155,73 @@ def scrape_urls(urls: list[str]) -> list[str]:
         time.sleep(0.75) # Be polite, slightly increased delay
 
     print(f"✅ Scraping finished. Retrieved content from {len(scraped_content)} URLs.")
-    return scraped_content
+    return scraped_content  
+
+ # function to summazrize articles
+def summarize_article(chat_session:ChatSession, article_metadata: dict, query:str) ->str:
+    """
+    Summarizes the content of an article using the LLM.
+
+    Args:
+        article_metadata: Dictionary containing article metadata (title, snippet, URL).
+
+    Returns:
+        A summary string of the article.
+    """
+    #parse Article meta data
+    if not isinstance(article_metadata, dict):
+        raise ValueError("article_metadata must be a dictionary")
+    if not all(key in article_metadata for key in ['title', 'snippet', 'url']):
+        raise ValueError("article_metadata must contain 'title', 'snippet', and 'url' keys")
+    
+    Title = article_metadata.get('title', 'No Title')
+    Snippet = article_metadata.get('snippet', Title)
+    URL = article_metadata.get('url', 'No URL')
+    article_content = scrape_urls([URL])
+    if not article_content:
+        raise ValueError("No content scraped from the provided URL")
+    # Join the scraped content into a single string
+    article_text = " ".join(article_content)
+    # Check if the content is too long
+    if len(article_text) > 5000:
+        article_text = article_text[:5000] + "... [Truncated]"
+
+    # Construct a prompt for summarization
+    prompt = f"""
+           You are a highly accomplished research scientist with over 10 years of experience and a proven record of impactful scientific analysis.
+            Your task is to carefully analyze and summarize the following scientific article to assist a dermatologist in optimizing their research paper.
+
+            ARTICLE DETAILS:
+            - Title: {Title}
+            - Full Text: {article_text}
+            - Research Focus: {query}
+
+            INSTRUCTIONS:
+            1. Present your analysis using clearly defined sections:
+            - Introduction
+            - Methods
+            - Key Findings
+            - Discussion
+            - Conclusion
+
+            2. Under each section, highlight key points using **bullet points**.
+
+            3. Ensure the summary is:
+            - Concise and precise
+            - Written in **simple and professional language**
+            - Focused on extracting insights directly relevant to the query: **{query}**
+
+            4. Emphasize information that will **enhance the efficiency and depth** of dermatology research.
+
+            5. Avoid markdown, code formatting, or links—**plain text only**.
+
+            Before finalizing:
+            ✅ Double-check that all critical insights related to the research focus ({query}) are included.  
+            ✅ Ensure the summary supports decision-making and scientific clarity.
+
+    """
+
+    # Send the prompt to the LLM and get the response
+    summary = send_message_to_llm(chat_session, prompt=prompt)
+    
+    return summary
